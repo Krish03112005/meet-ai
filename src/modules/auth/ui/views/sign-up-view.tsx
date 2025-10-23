@@ -2,12 +2,14 @@
 
 import {z} from "zod";
 import {zodResolver} from "@hookform/resolvers/zod";
-
+import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button"; 
+import { FaGithub, FaGoogle } from "react-icons/fa";
 import { Card, CardContent } from "@/components/ui/card";
 import {Alert, AlertTitle } from "@/components/ui/alert";
+
 import {
     Form,
     FormControl,
@@ -18,7 +20,6 @@ import {
 } from "@/components/ui/form";
 import { OctagonAlertIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -58,19 +59,37 @@ export const SignUpView = () => {
                 name: data.name,
                 email: data.email,
                 password: data.password,
+                callbackURL: "/",
             },
             {
                 onSuccess: () => {
                     setPending(false);
-                    router.push("/"); 
+                    router.push("/");
                 },
                 onError: ({error}) => {
                     setError(error.message);
                 },
             }
         );
+    };
+        const onSocial =  (provider: "google" | "github") => {
+        setError(null);
+        setPending(true);
 
-        
+        authClient.signIn.social(
+            {
+                provider: provider,
+                callbackURL: "/",
+            },
+            {
+                onSuccess: () => {
+                    setPending(false);
+                },
+                onError: ({error}) => {
+                    setError(error.message);
+                },
+            }
+        );
     };
 
     return (
@@ -185,24 +204,26 @@ export const SignUpView = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 <Button 
                                   disabled={pending}
+                                  onClick ={() => onSocial("google")}
                                   variant="outline"
                                   type="button"
                                   className="w-full"
                                   >
-                                    Google
+                                    <FaGoogle />
                                 </Button>
                                 <Button 
                                   disabled={pending}
+                                  onClick ={() => onSocial("github")}
                                   variant="outline"
                                   type="button"
                                   className="w-full"
                                   >
-                                    Github
+                                    <FaGithub />
                                 </Button>
                             </div>
                             <div className="text-center text-sm">
                                 Don't have an account?{" "}
-                                <Link href="/sign-in" className="underline underline-offset-4 text-green-600">
+                                <Link href="/sign-in" className="underline underline-offset-4 text-purple-600">
                                 Sign In
                                 </Link>
                             </div>
@@ -211,7 +232,7 @@ export const SignUpView = () => {
                     </Form>
                     
 
-                    <div className="bg-radial from-green-700 to-green-900 relative hidden md:flex flex-col gap-y-4 items-center justify-center">
+                    <div className="bg-radial from-purple-700 to-blue-900 relative hidden md:flex flex-col gap-y-4 items-center justify-center">
                         <img src="/logo.svg" alt="Image" className="h-[92px] w-[92px]" />
                         <p className="text-2xl font-semibold text-white">Meet.AI</p>
                     </div>
