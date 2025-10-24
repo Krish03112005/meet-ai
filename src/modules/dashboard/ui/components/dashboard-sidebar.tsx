@@ -49,9 +49,9 @@ export const DashboardSidebar = () => {
     return (
         <Sidebar>
             <SidebarHeader className="text-sidebar-accent-foreground">
-                <Link href="/" className="flex items-center gap-2 px-2 pt-2">
-                   <Image src="/logo.svg" alt="Meet.AI" width={36} height={36} />
-                   <p className="text-2xl font-semibold">Meet.AI</p>
+                <Link href="/" className="flex items-center px-4 gap-2 pt-2">
+                   <Image src="/logo.svg" alt="Meet.AI" width={39} height={39} />
+                   <p className="text-3xl font-semibold">Meet.AI</p>
                 </Link>
             </SidebarHeader>
             <div className="px-4 py-2">
@@ -73,7 +73,7 @@ export const DashboardSidebar = () => {
                                     >
                                         <Link href={item.href}>
                                         <item.icon className="size-5"/>
-                                          <span className="text-sm font-medium tracking-tight">
+                                          <span className="text-sm font-semibold tracking-tight">
                                             {item.label}
                                           </span>
                                         </Link>
@@ -101,7 +101,7 @@ export const DashboardSidebar = () => {
                                     >
                                         <Link href={item.href}>
                                         <item.icon className="size-5"/>
-                                          <span className="text-sm font-medium tracking-tight">
+                                          <span className="text-sm font-semibold tracking-tight">
                                             {item.label}
                                           </span>
                                         </Link>
