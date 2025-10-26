@@ -4,15 +4,34 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from peft import PeftModel
 
-BASEMODEL_PATH = r"D:\meet-ai\llm-fastapi-backend\Llama-3.2-1B-Instruct"  # Path to the base model
-ADAPTER_ROOT = r"D:\meet-ai\llm-fastapi-backend\adapters"  # Root directory for all adapters
-device = "cpu"  # Change to 'cuda' if you get CUDA support later
+# -----------------------------
+# CONFIGURATION
+# -----------------------------
+BASEMODEL_PATH = r"D:\meet-ai\llm-fastapi-backend\Llama-3.2-1B-Instruct"
+device = "cpu"
 
+# Limit CPU threads (for stability on CPU inference)
+torch.set_num_threads(4)
+
+# -----------------------------
+# LOAD MODEL + TOKENIZER
+# -----------------------------
 tokenizer = AutoTokenizer.from_pretrained(BASEMODEL_PATH)
-base_model = AutoModelForCausalLM.from_pretrained(BASEMODEL_PATH, torch_dtype=torch.float32).to(device)
+base_model = AutoModelForCausalLM.from_pretrained(
+    BASEMODEL_PATH,
+    low_cpu_mem_usage=True,
+    torch_dtype=torch.float32
+).to(device)
 
+# Dynamic quantization for lower CPU usage
+base_model = torch.quantization.quantize_dynamic(
+    base_model, {torch.nn.Linear}, dtype=torch.qint8
+)
+
+# -----------------------------
+# FASTAPI SERVER SETUP
+# -----------------------------
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -22,49 +41,47 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Swapable adapter logic
-current_persona = None
-persona_model = base_model
-
-def load_persona_adapter(persona_name):
-    adapter_dir = os.path.join(ADAPTER_ROOT, persona_name)
-    print(f"Loading adapter: {adapter_dir}")
-    # No device_map, no offload_folder!
-    model_with_adapter = PeftModel.from_pretrained(base_model, adapter_dir)
-    model_with_adapter = model_with_adapter.merge_and_unload()
-    # Force all weights to CPU
-    model_with_adapter = model_with_adapter.to(torch.device("cpu"))
-    return model_with_adapter
-
-
-
+# -----------------------------
+# REQUEST / RESPONSE MODELS
+# -----------------------------
 class ChatRequest(BaseModel):
-    persona: str    # e.g. 'lawyer', 'doctor'
+    persona: str          # Example: "lawyer" or "doctor"
     message: str
-    max_new_tokens: int = 32
-    temperature: float = 0.2
+    max_new_tokens: int = 64
+    temperature: float = 0.3
     top_p: float = 0.9
+
 
 class ChatResponse(BaseModel):
     response: str
 
-@app.get("/adapters")
-def list_adapters():
-    adapters = [
-        folder for folder in os.listdir(ADAPTER_ROOT)
-        if os.path.isdir(os.path.join(ADAPTER_ROOT, folder))
-    ]
-    return {"adapters": adapters}
 
+# -----------------------------
+# CHAT ENDPOINT
+# -----------------------------
 @app.post("/chat", response_model=ChatResponse)
 def chat(req: ChatRequest):
-    global current_persona, persona_model
-    if req.persona != current_persona:
-        persona_model = load_persona_adapter(req.persona)
-        current_persona = req.persona
-    input_ids = tokenizer(req.message, return_tensors="pt").input_ids.to(device)
-    with torch.no_grad():
-        output_ids = persona_model.generate(
+
+    # Build System Prompt (persona-based)
+    system_prompt = (
+        f"You are AVA! helpful and expert AI assistant acting as a {req.persona}. "
+        f"Stay in character and give accurate, concise, and relevant answers."
+        f" Use professional language appropriate for a {req.persona}.Be a little humorous. Explain every term if the user doesnt understand"
+    )
+
+    # Combine messages following the Llama 3.1/3.2 prompt format
+    prompt = (
+        "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n"
+        f"{system_prompt}<|eot_id|><|start_header_id|>user<|end_header_id|>\n"
+        f"{req.message}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n"
+    )
+
+    # Tokenize input
+    input_ids = tokenizer(prompt, return_tensors="pt").input_ids.to(device)
+
+    # Generate response
+    with torch.inference_mode():
+        output_ids = base_model.generate(
             input_ids,
             max_new_tokens=req.max_new_tokens,
             temperature=req.temperature,
@@ -74,9 +91,18 @@ def chat(req: ChatRequest):
             eos_token_id=tokenizer.eos_token_id,
             pad_token_id=tokenizer.eos_token_id
         )
-    response = tokenizer.decode(output_ids[0][input_ids.shape[-1]:], skip_special_tokens=True)
-    return ChatResponse(response=response.strip())
 
+    # Decode assistant’s reply
+    response_text = tokenizer.decode(
+        output_ids[0][input_ids.shape[-1]:], skip_special_tokens=True
+    ).strip()
+
+    return ChatResponse(response=response_text)
+
+
+# -----------------------------
+# HEALTH CHECK
+# -----------------------------
 @app.get("/")
 def root():
-    return {"message": "LLM Backend running with persona adapters (CPU)"}
+    return {"message": "Llama‑3 Instruct backend running with persona system prompts (optimized CPU mode)"}

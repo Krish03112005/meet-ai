@@ -1,0 +1,10 @@
+
+dependencies:
+  - python=3.10
+  - pip
+  - pytorch>=2.1  # or the latest supported by your GPU/CUDA
+  - cuda-toolkit  # Only if you're on GPU, else remove this line
+  - pip:
+      - transformers>=4.40
+      - peft>=0.10
+      - unsloth
