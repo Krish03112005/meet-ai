@@ -32,8 +32,7 @@ export const agentsRouter = createTRPCRouter({
         }
 
         return updatedAgents;
-     }) 
-    ,
+     }),
     remove: protectedProcedure
     .input(z.object({id:  z.string()}))
     .mutation(async ({ctx, input}) => {
@@ -89,6 +88,7 @@ export const agentsRouter = createTRPCRouter({
                     .number()
                     .min(MIN_PAGE_SIZE)
                     .max(MAX_PAGE_SIZE)
+                    .optional()
                     .default(DEFAULT_PAGE_SIZE),
                 search: z.string().nullish()
             })
@@ -143,5 +143,5 @@ export const agentsRouter = createTRPCRouter({
             .returning();
         
             return createdAgent;
-    })
+    }),
 })
