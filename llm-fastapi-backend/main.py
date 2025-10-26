@@ -29,15 +29,13 @@ persona_model = base_model
 def load_persona_adapter(persona_name):
     adapter_dir = os.path.join(ADAPTER_ROOT, persona_name)
     print(f"Loading adapter: {adapter_dir}")
-    model_with_adapter = PeftModel.from_pretrained(
-        base_model,
-        adapter_dir,
-        device_map="auto",        # Force no device_map (no sharding/offload)
-        offload_folder=None     # Ensure no offload folder
-    ) 
+    # No device_map, no offload_folder!
+    model_with_adapter = PeftModel.from_pretrained(base_model, adapter_dir)
     model_with_adapter = model_with_adapter.merge_and_unload()
-    model_with_adapter.to(device)
+    # Force all weights to CPU
+    model_with_adapter = model_with_adapter.to(torch.device("cpu"))
     return model_with_adapter
+
 
 
 class ChatRequest(BaseModel):
