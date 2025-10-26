@@ -30,7 +30,8 @@ const Page = async ({ searchParams }: Props) => {
     if (!session) {
       redirect("/sign-in");
     };
-    const queryClient = getQueryClient();
+
+  const queryClient = getQueryClient();
     void queryClient.prefetchQuery(trpc.agents.getMany.queryOptions({
       ...filters,
     }));
