@@ -57,6 +57,7 @@ def load_persona_adapter(persona_name):
 
 
 class ChatRequest(BaseModel):
+    name: str
     persona: str
     message: str
     max_new_tokens: int = 32

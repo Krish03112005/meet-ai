@@ -37,25 +37,27 @@ class ChatResponse(BaseModel):
 @app.post("/chat", response_model=ChatResponse)
 def chat(req: ChatRequest):
     prompt = (
-        f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n"
-        f"You are {req.agentname}, a helpful and expert AI acting as a {req.persona}. "
-        "Stay in character, give accurate, concise, and relevant answers. "
-        f"Use professional language for a {req.persona}. Be a little humorous. Explain terms if user doesn't understand."
-        "<|eot_id|><|start_header_id|>user<|end_header_id|>\n"
-        f"{req.message}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n"
-    )
+    f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n"
+    f"You are {req.name}, a professional {req.persona}. Answer as a helpful, concise AI assistant. "
+    "Reply clearly, with a friendly but expert tone. Only answer what the user asks, do not repeat your introduction. "
+    "Limit your response to about 2-3 sentences. If your output is cut off, end your last sentence cleanly."
+    "<|eot_id|><|start_header_id|>user<|end_header_id|>\n"
+    f"{req.message}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n"
+)
+
     input_ids = tokenizer(prompt, return_tensors="pt").input_ids.to(device)
     with torch.inference_mode():
-        output_ids = model.generate(
-            input_ids,
-            max_new_tokens=req.max_new_tokens,
-            temperature=req.temperature,
-            top_p=req.top_p,
-            do_sample=True,
-            num_beams=1,
-            eos_token_id=tokenizer.eos_token_id,
-            pad_token_id=tokenizer.eos_token_id
-        )
+        output_ids = base_model.generate(
+        input_ids,
+        max_new_tokens=64,
+        temperature=0.55,
+        top_p=0.9,
+        do_sample=True,
+        num_beams=1,
+        eos_token_id=tokenizer.eos_token_id,
+        pad_token_id=tokenizer.eos_token_id
+    )
+
     response_text = tokenizer.decode(
         output_ids[0][input_ids.shape[-1]:], skip_special_tokens=True
     ).strip()
