@@ -14,7 +14,7 @@ import { useConfirm } from "@/hooks/use-confirms";
 import React, { useState } from "react";
 import { UpdateAgentDialog } from "../components/update-agent-dialog";
 import { VoiceChat } from "../components/voice-chat";
-import { CHAT_API_URL } from "@/config/constants";
+import { CHAT_API_URL } from "@/config/constants"; 
 
 interface Props {
   agentId: string;
